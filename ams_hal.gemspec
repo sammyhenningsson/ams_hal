@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 Gem::Specification.new do |gem|
-  gem.name        = 'ams_hal_adapter'
+  gem.name        = 'ams_hal'
   gem.version     = '0.0.1'
   gem.date        = '2017-02-04'
   gem.summary     = "HAL adapter for active_model_serializers"

@@ -1,4 +1,4 @@
-require 'ams_hal_adapter'
+require 'ams_hal'
 require 'active_support/test_case'
 
 class HalAdapterTest < ActiveSupport::TestCase

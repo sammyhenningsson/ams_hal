@@ -1,7 +1,6 @@
 module AmsHalAdapter
   class Link
-    # FIXME: check that rails is used
-    #include ::Rails.application.routes.url_helpers
+    include ::Rails.application.routes.url_helpers if defined?(::Rails)
 
     attr_reader :href
 
