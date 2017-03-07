@@ -1,6 +1,8 @@
-module AmsHalAdapter
+require 'active_model_serializers/serialization_context'
+
+module AmsHal
   class Link
-    include ::Rails.application.routes.url_helpers if defined?(::Rails)
+    include ActiveModelSerializers::SerializationContext::UrlHelpers
 
     attr_reader :href
 
