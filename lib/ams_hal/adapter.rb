@@ -25,8 +25,16 @@ module AmsHal
 
     def serialize_links(serializer)
       serializer._links.each_with_object({}) do |(rel, value), hash|
-        href = Link.new(serializer, value).href
-        hash[rel] = { href: href } unless href.blank?
+        link = Link.new(serializer, value).value
+        [link].flatten.each do |href|
+          next unless href
+          if hash.key? rel
+            hash[rel] = [hash[rel]] unless hash[rel].is_a? Array
+            hash[rel] << { href: href }
+          else
+            hash[rel] = { href: href }
+          end
+        end
       end
     end
   end

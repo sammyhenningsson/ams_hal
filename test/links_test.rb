@@ -21,4 +21,37 @@ class LinksTest < ActiveSupport::TestCase
       @json[:_links]
     )
   end
+
+  test "multiple links with same rel" do
+    class MultiLinkSerializer < ActiveModel::Serializer
+      link :children do
+        [
+          "children/1",
+          "children/2"
+        ]
+      end
+
+      link :single do
+        "one/1"
+      end
+    end
+
+    resource = Resource.new(id: 5, foo: "test", bar: nil, baz: :more)
+    serializable_resource = ActiveModelSerializers::SerializableResource.new(
+      resource,
+      serializer: MultiLinkSerializer,
+      adapter: AmsHal::Adapter
+    )
+
+    assert_equal(
+      {
+        single: { href: "one/1" },
+        children: [
+          { href: "children/1" },
+          { href: "children/2" },
+        ]
+      },
+      serializable_resource.as_json[:_links]
+    )
+  end
 end
