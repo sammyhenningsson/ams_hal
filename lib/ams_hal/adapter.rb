@@ -20,11 +20,12 @@ module AmsHal
       if links = serialize_links(serializer)
         serialized[:_links] = links
       end
+
       serialized
     end
 
     def serialize_links(serializer)
-      serializer._links.each_with_object({}) do |(rel, value), hash|
+      links = serializer._links.each_with_object({}) do |(rel, value), hash|
         link = Link.new(serializer, value).value
         [link].flatten.each do |href|
           next unless href
@@ -35,6 +36,22 @@ module AmsHal
             hash[rel] = { href: href }
           end
         end
+      end
+      curies = serialize_curies(serializer)
+      links[:curies] = curies if curies
+
+      links
+    end
+
+    def serialize_curies(serializer)
+      return unless serializer.class.included_modules.include? AmsHal::Curies
+      serializer.curies.each_with_object([]) do |(name, value), array|
+        href = Link.new(serializer, value).value
+        array << {
+          name: name,
+          href: href,
+          templated: true
+        }
       end
     end
   end
