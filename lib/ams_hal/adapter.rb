@@ -14,6 +14,8 @@ module AmsHal
       self.class.transform_key_casing!(serialized, instance_options)
     end
 
+    protected
+
     def serialize_resource(serializer, adapter_options, options)
       serialized = serializer.serializable_hash(adapter_options, options, self)
 
@@ -21,10 +23,15 @@ module AmsHal
         serialized[:_links] = links
       end
 
+      if embedded = serialize_embedded(serializer)
+        serialized[:_embedded] = embedded
+      end
+
       serialized
     end
 
     def serialize_links(serializer)
+      return unless serializer.respond_to? :_links
       links = serializer._links.each_with_object({}) do |(rel, value), hash|
         link = Link.new(serializer, value).value
         [link].flatten.each do |href|
@@ -54,5 +61,36 @@ module AmsHal
         }
       end
     end
+
+    def serialize_embedded(serializer)
+      return unless serializer.respond_to? :embedded
+      serializer.embedded.each_with_object({}) do |association, embedded|
+        object = serializer.object
+        if object&.respond_to? association
+          resource = serializer.object.public_send(association)
+        else
+          puts "WARN: Failed to get association '#{association}' from resource (#{object})"
+        end
+
+        next unless resource
+
+        resources = resource.respond_to?(:each) ? resource : [resource]
+        serialized_resources = resources.map do |resrc|
+          serialize_embedded_resource(resrc)
+        end
+        embedded[association] = resources.size == 1 ? serialized_resources.first : serialized_resources
+      end
+    end
+
+    private
+
+    def serialize_embedded_resource(resource)
+      serializable_resource = ActiveModelSerializers::SerializableResource.new(
+        resource,
+        adapter: AmsHal::Adapter
+      )
+      serializable_resource.as_json
+    end
+
   end
 end
