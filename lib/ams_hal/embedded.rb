@@ -14,8 +14,8 @@ module AmsHal
         subclass._embedded = _embedded.dup
       end
 
-      def embed(association)
-        self._embedded << association
+      def embed(name, options = {}, &block)
+        self._embedded << Embed.new(self, name, options, &block)
       end
     end
 

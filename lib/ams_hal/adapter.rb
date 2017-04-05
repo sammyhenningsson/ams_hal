@@ -20,11 +20,15 @@ module AmsHal
       serialized = serializer.serializable_hash(adapter_options, options, self)
 
       if links = serialize_links(serializer)
-        serialized[:_links] = links
+        serialized[:_links] = links if links.any?
       end
 
       if embedded = serialize_embedded(serializer)
-        serialized[:_embedded] = embedded
+        serialized[:_embedded] = embedded if embedded.any?
+      end
+
+      if associations = serialize_associations(serializer)
+        serialized[:_embedded] = associations if associations.any?
       end
 
       serialized
@@ -51,7 +55,7 @@ module AmsHal
     end
 
     def serialize_curies(serializer)
-      return unless serializer.class.included_modules.include? AmsHal::Curies
+      return unless serializer.respond_to? :curies
       serializer.curies.each_with_object([]) do |(name, value), array|
         href = Link.new(serializer, value).value
         array << {
@@ -64,29 +68,50 @@ module AmsHal
 
     def serialize_embedded(serializer)
       return unless serializer.respond_to? :embedded
-      serializer.embedded.each_with_object({}) do |association, embedded|
+      serializer.embedded.each_with_object({}) do |embed, embedded|
+        resource = embed.resource_for(serializer)
+
+        next unless resource
+
+        serialized_resources = [resource].flatten.map do |resrc|
+          serialize_embedded_resource(resrc)
+        end
+        embedded[embed.name] = if serialized_resources.size == 1
+                                  serialized_resources.first
+                                else
+                                  serialized_resources
+                                end
+      end
+    end
+
+    def serialize_associations(serializer)
+      serializer.associations().each_with_object({}) do |association, embedded|
         object = serializer.object
-        if object&.respond_to? association
-          resource = serializer.object.public_send(association)
+        if object&.respond_to? association.name
+          resource = object.public_send(association.name)
         else
-          puts "WARN: Failed to get association '#{association}' from resource (#{object})"
+          puts "WARN: Failed to get '#{association.name}' association from resource (#{object})"
         end
 
         next unless resource
 
-        resources = resource.respond_to?(:each) ? resource : [resource]
-        serialized_resources = resources.map do |resrc|
-          serialize_embedded_resource(resrc)
+        serialized_resources = [resource].flatten.map do |resrc|
+          serialize_embedded_resource(resrc, serializer: association.serializer&.class)
         end
-        embedded[association] = resources.size == 1 ? serialized_resources.first : serialized_resources
+        embedded[association.name] = if serialized_resources.size == 1
+                                       serialized_resources.first
+                                      else
+                                        serialized_resources
+                                      end
       end
     end
 
     private
 
-    def serialize_embedded_resource(resource)
+    def serialize_embedded_resource(resource, serializer: nil)
       serializable_resource = ActiveModelSerializers::SerializableResource.new(
         resource,
+        serializer: serializer,
         adapter: AmsHal::Adapter
       )
       serializable_resource.as_json

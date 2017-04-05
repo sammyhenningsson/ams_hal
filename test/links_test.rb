@@ -53,4 +53,31 @@ class LinksTest < ActiveSupport::TestCase
       serializable_resource.as_json[:_links]
     )
   end
+
+  test "that serializer class context can be accessed from block" do
+    class ContextSerializer < ActiveModel::Serializer
+      def self.some_class_method
+        "link/from/class/method"
+      end
+
+      link :foo do
+        some_class_method
+      end
+
+    end
+
+    resource = Resource.new(id: 5, foo: "test", bar: nil, baz: :more)
+    serializable_resource = ActiveModelSerializers::SerializableResource.new(
+      resource,
+      serializer: ContextSerializer,
+      adapter: AmsHal::Adapter
+    )
+
+    assert_equal(
+      {
+        foo: { href: "link/from/class/method" },
+      },
+      serializable_resource.as_json[:_links]
+    )
+  end
 end

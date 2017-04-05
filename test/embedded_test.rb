@@ -2,11 +2,24 @@ require 'test_helper'
 
 class EmbeddedTest < ActiveSupport::TestCase
 
+  class ChildResourceSerializer < ActiveModel::Serializer
+    attributes :id, :foo
+  end
+
   class EmbeddedSerializer < ActiveModel::Serializer
     include AmsHal::Embedded
 
     embed :parent
-    embed :children
+    embed :cousin do
+      object.some_method(4)
+    end
+    embed :children, serializer: ChildResourceSerializer
+  end
+
+  class SubSerializer < EmbeddedSerializer
+    embed :another_cousin do
+      object.some_method(5)
+    end
   end
 
   class ResourceWithEmbeds < ActiveModelSerializers::Model
@@ -23,21 +36,26 @@ class EmbeddedTest < ActiveSupport::TestCase
         Resource.new(id: 3, bar: "bar3"),
       ]
     end
+
+    def some_method(id)
+      Resource.new(id: id, foo: "foo#{id}")
+    end
+
   end
 
   def setup
-    resource = ResourceWithEmbeds.new(id: 5, attr1: "Attr1")
-    serializable_resource = ActiveModelSerializers::SerializableResource.new(
-      resource,
-      serializer: EmbeddedSerializer,
-      adapter: AmsHal::Adapter
-    )
-    @json = serializable_resource.as_json
+    @resource = ResourceWithEmbeds.new(id: 5, attr1: "Attr1")
   end
 
   test "that embedded resources are serialized" do
-    puts @json
-    assert_equal 2, @json[:_embedded].size
+    serializable_resource = ActiveModelSerializers::SerializableResource.new(
+      @resource,
+      serializer: EmbeddedSerializer,
+      adapter: AmsHal::Adapter
+    )
+    json = serializable_resource.as_json
+
+    assert_equal 3, json[:_embedded].size
     assert_equal(
       {
         id: 1,
@@ -48,8 +66,9 @@ class EmbeddedTest < ActiveSupport::TestCase
           edit: { href: ResourceSerializer::EDIT_LINK },
         },
       },
-      @json[:_embedded][:parent]
+      json[:_embedded][:parent]
     )
+
     assert_equal(
       [
         {
@@ -71,7 +90,43 @@ class EmbeddedTest < ActiveSupport::TestCase
           },
         },
       ],
-      @json[:_embedded][:children]
+      json[:_embedded][:children]
+    )
+
+    assert_equal(
+      {
+        id: 4,
+        foo: "foo4",
+        bar: nil,
+        _links: {
+          self: { href: ResourceSerializer::SELF_LINK },
+          edit: { href: ResourceSerializer::EDIT_LINK },
+        },
+      },
+      json[:_embedded][:cousin]
+    )
+  end
+
+  test "that serializers can inherit embeds" do 
+    serializable_resource = ActiveModelSerializers::SerializableResource.new(
+      @resource,
+      serializer: SubSerializer,
+      adapter: AmsHal::Adapter
+    )
+    json = serializable_resource.as_json
+    assert_equal 4, json[:_embedded].size
+
+    assert_equal(
+      {
+        id: 5,
+        foo: "foo5",
+        bar: nil,
+        _links: {
+          self: { href: ResourceSerializer::SELF_LINK },
+          edit: { href: ResourceSerializer::EDIT_LINK },
+        },
+      },
+      json[:_embedded][:another_cousin]
     )
   end
 
