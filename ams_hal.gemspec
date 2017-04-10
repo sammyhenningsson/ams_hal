@@ -14,8 +14,6 @@ Gem::Specification.new do |gem|
   gem.license     = "MIT"
   gem.homepage    = "https://github.com/sammyhenningsson/ams_hal"
 
-  gem.metadata['allowed_push_host'] = 'https://sammygadd.se/'
-
   gem.files         = `git ls-files lib`.split
   gem.require_paths = ["lib"]
 
