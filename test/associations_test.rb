@@ -2,14 +2,15 @@ require 'test_helper'
 
 class AssociationsTest < ActiveSupport::TestCase
 
-  class ChildResourceSerializer < ActiveModel::Serializer
+  class SimpleResourceSerializer < ActiveModel::Serializer
     attributes :id, :foo
   end
 
   class AssociationsSerializer < ActiveModel::Serializer
     has_one :parent
-    belongs_to :owner
-    has_many :children, serializer: ChildResourceSerializer
+    belongs_to :owner, serializer: SimpleResourceSerializer
+    has_many :children
+    has_many :simple_children, serializer: SimpleResourceSerializer
   end
 
   class ResourceWithAssociations < ActiveModelSerializers::Model
@@ -25,6 +26,13 @@ class AssociationsTest < ActiveSupport::TestCase
     end
 
     def children
+      [
+        Resource.new(id: 3, foo: "child3"),
+        Resource.new(id: 4, bar: "child4"),
+      ]
+    end
+
+    def simple_children
       [
         Resource.new(id: 3, foo: "child3"),
         Resource.new(id: 4, bar: "child4"),
@@ -64,18 +72,40 @@ class AssociationsTest < ActiveSupport::TestCase
       {
         id: 2,
         foo: "owner",
-        bar: nil,
-        _links: {
-          self: { href: ResourceSerializer::SELF_LINK },
-          edit: { href: ResourceSerializer::EDIT_LINK },
-        },
       },
       @json[:_embedded][:owner]
     )
   end
 
-  test "that has_many association is embedded" do
+  test "that has_many association is embedded with default serializer" do
     assert @json.dig(:_embedded, :children)
+    assert_equal(
+      [
+        {
+          id: 3,
+          foo: "child3",
+          bar: nil,
+          _links: {
+            self: { href: ResourceSerializer::SELF_LINK },
+            edit: { href: ResourceSerializer::EDIT_LINK },
+          },
+        },
+        {
+          id: 4,
+          foo: nil,
+          bar: "child4",
+          _links: {
+            self: { href: ResourceSerializer::SELF_LINK },
+            edit: { href: ResourceSerializer::EDIT_LINK },
+          },
+        },
+      ],
+      @json[:_embedded][:children]
+    )
+  end
+
+  test "that has_many association is embedded with specified serializer" do
+    assert @json.dig(:_embedded, :simple_children)
     assert_equal(
       [
         {
@@ -87,7 +117,7 @@ class AssociationsTest < ActiveSupport::TestCase
           foo: nil,
         },
       ],
-      @json[:_embedded][:children]
+      @json[:_embedded][:simple_children]
     )
   end
 

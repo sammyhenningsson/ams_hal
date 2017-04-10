@@ -17,6 +17,7 @@ module AmsHal
     protected
 
     def serialize_resource(serializer, adapter_options, options)
+      options[:include_directive] = {} # Don't include associations as attributes
       serialized = serializer.serializable_hash(adapter_options, options, self)
 
       if links = serialize_links(serializer)
@@ -85,7 +86,7 @@ module AmsHal
     end
 
     def serialize_associations(serializer)
-      serializer.associations().each_with_object({}) do |association, embedded|
+      serializer.associations.each_with_object({}) do |association, embedded|
         object = serializer.object
         if object&.respond_to? association.name
           resource = object.public_send(association.name)
@@ -95,14 +96,23 @@ module AmsHal
 
         next unless resource
 
-        serialized_resources = [resource].flatten.map do |resrc|
-          serialize_embedded_resource(resrc, serializer: association.serializer&.class)
+        if association.serializer.is_a? ActiveModel::Serializer::CollectionSerializer
+          # Not sure if this could happen and perhaps we should fail instead of create an array??
+          resource = [resource] unless resource.respond_to? :each
+
+          embedded[association.name] = resource.map do |resrc|
+            # FIXME: How to improve this?
+            serialize_embedded_resource(
+              resrc,
+              serializer: association.serializer.send(:options)[:serializer]
+            )
+          end
+        else
+          embedded[association.name] = serialize_embedded_resource(
+            resource, 
+            serializer: association.serializer&.class
+          )
         end
-        embedded[association.name] = if serialized_resources.size == 1
-                                       serialized_resources.first
-                                      else
-                                        serialized_resources
-                                      end
       end
     end
 

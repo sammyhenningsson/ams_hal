@@ -1,3 +1,4 @@
+require 'active_support/core_ext/hash/indifferent_access.rb'
 require 'active_model_serializers'
 require 'ams_hal/adapter'
 require 'ams_hal/link'
