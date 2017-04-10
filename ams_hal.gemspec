@@ -17,7 +17,7 @@ Gem::Specification.new do |gem|
   gem.files         = `git ls-files lib`.split
   gem.require_paths = ["lib"]
 
-  gem.add_dependency "active_model_serializers", "~> 0.10.2"
+  gem.add_dependency "active_model_serializers", "~> 0.10.5"
   gem.add_dependency "activesupport", ">= 4.2"
   gem.add_development_dependency "rake"
 end
