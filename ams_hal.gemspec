@@ -1,8 +1,8 @@
 # -*- encoding: utf-8 -*-
 Gem::Specification.new do |gem|
   gem.name        = 'ams_hal'
-  gem.version     = '0.2.2'
-  gem.date        = '2017-04-10'
+  gem.version     = '0.2.3'
+  gem.date        = '2017-04-17'
   gem.summary     = "HAL adapter for active_model_serializers"
   gem.description = <<~EOS
                     Provides an adapter to use with ActiveModel::Serializer
