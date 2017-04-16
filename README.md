@@ -9,7 +9,7 @@ This Gem makes it possible to represent resources as HAL with ActiveModelSeriali
 Add these lines to your application's Gemfile:
 
 ```
-gem 'active_model_serializers', '~> 0.10.0'
+gem 'active_model_serializers', '~> 0.10.2'
 gem 'ams_hal', '~>0.2.0'
 ```
 
@@ -45,10 +45,10 @@ Which would return:
     "_embedded": {
         "comments": [
             {
-                "comment": "some important comments"
+                "text": "some important comments"
             },
             {
-                "comment": "more comments"
+                "text": "more comments"
             }
         ]
     },
@@ -61,9 +61,12 @@ Which would return:
     "title": "hello"
 }
 ```
-However, some things are not support in HAL, such as type and meta.  
+The associations `belongs_to` and `has_one` may also be used. These nested resources will get serialized using
+a serializer found by the normal serializer lookup. If you would like to specify a certain serializer then
+write `has_many :comments, serializer: MySerializer`.
+Some things, such as type and meta, are not support in HAL.  
 
-This make it possible to let the clients request application/hal+json or application/vnd.api+json and 
+This makes it possible to let the client request application/hal+json or application/vnd.api+json and 
 use the same serializers. E.g. adding this to the ApplicationController:
 ``` ruby
 class ApplicationController < ActionController::API
@@ -85,7 +88,7 @@ class ApplicationController < ActionController::API
   end
 end
 ```
-Please note: The Accept header can quiet complex and this maybe not be the best way of dynamically select media type.
+Please note: The Accept header can be quiet complex and this maybe not be the best way to dynamically select the media type.
 
 ## HAL only
 If you want to go all in with HAL, then include AmsHal::Curies and AmsHal::Embedded. Then write your serializer like:
@@ -116,10 +119,10 @@ Which would return:
     "_embedded": {
         "comments": [
             {
-                "comment": "some important comments"
+                "text": "some important comments"
             },
             {
-                "comment": "more comments"
+                "text": "more comments"
             }
         ]
     },
@@ -139,3 +142,7 @@ Which would return:
     "title": "hello"
 }
 ```
+Like associations, the nested resources will get serialized using a serializer found by the normal serializer lookup.
+(A resource of class `Comment` will use the serializer `CommentSerializer`). If you would like to specify a certain
+serializer then write `embed :comments, serializer: MySerializer`.  
+

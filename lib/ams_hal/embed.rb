@@ -4,9 +4,10 @@ module AmsHal
   class Embed
     include ActiveModelSerializers::SerializationContext::UrlHelpers
 
-    attr_reader :name, :options
+    attr_reader :serializer, :name, :options
 
     def initialize(serializer, name, options = {}, &block)
+      @serializer = serializer
       @name = name
       @options = options
       @block = block

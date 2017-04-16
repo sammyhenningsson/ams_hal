@@ -1,38 +1,57 @@
 module AmsHal
   class Adapter < ActiveModelSerializers::Adapter::Base
-    def serializable_hash(options = nil)
+    def serializable_hash(options = {})
       options = serialization_options(options)
       options[:fields] ||= instance_options[:fields]
-      serialized = if serializer.respond_to?(:each)
-                     serializer.each_with_object([]) do |_serializer, array|
-                       array << serialize_resource(_serializer, instance_options, options)
-                     end
+      hash = if serializer.respond_to?(:each)
+                     serialize_collection(serializer, instance_options, options)
                    else
                      serialize_resource(serializer, instance_options, options)
                    end
 
-      self.class.transform_key_casing!(serialized, instance_options)
+      self.class.transform_key_casing!(hash, instance_options)
     end
 
     protected
 
     def serialize_resource(serializer, adapter_options, options)
+      skip_embedded = options.delete(:skip_embedded) || false
+
       options[:include_directive] = {} # Don't include associations as attributes
-      serialized = serializer.serializable_hash(adapter_options, options, self)
+      hash = serializer.serializable_hash(adapter_options, options, self)
 
       if links = serialize_links(serializer)
-        serialized[:_links] = links if links.any?
+        hash[:_links] = links if links.any?
       end
+
+      return hash if skip_embedded
 
       if embedded = serialize_embedded(serializer)
-        serialized[:_embedded] = embedded if embedded.any?
+        hash[:_embedded] = embedded if embedded.any?
       end
 
-      if associations = serialize_associations(serializer)
-        serialized[:_embedded] = associations if associations.any?
+      if associations = serialize_associations(serializer, adapter_options)
+        hash[:_embedded] = associations if associations.any?
       end
 
-      serialized
+      hash
+    end
+
+    def serialize_collection(serializer, adapter_options, options)
+      options[:include_directive] = {} # Don't include associations as attributes
+      hash = {}
+
+      if links = serialize_links(serializer)
+        hash[:_links] = links if links.any?
+      end
+
+      embedded = serializer.map do |_serializer|
+        options[:skip_embedded] = true
+        serialize_resource(_serializer, instance_options, options)
+      end
+      hash[:_embedded] = embedded if embedded.any?
+
+      hash
     end
 
     def serialize_links(serializer)
@@ -85,34 +104,24 @@ module AmsHal
       end
     end
 
-    def serialize_associations(serializer)
+    def serialize_associations(serializer, adapter_options)
       serializer.associations.each_with_object({}) do |association, embedded|
-        object = serializer.object
-        if object&.respond_to? association.name
-          resource = object.public_send(association.name)
-        else
-          puts "WARN: Failed to get '#{association.name}' association from resource (#{object})"
-        end
-
-        next unless resource
-
-        if association.serializer.is_a? ActiveModel::Serializer::CollectionSerializer
-          # Not sure if this could happen and perhaps we should fail instead of create an array??
-          resource = [resource] unless resource.respond_to? :each
-
-          embedded[association.name] = resource.map do |resrc|
-            # FIXME: How to improve this?
-            serialize_embedded_resource(
-              resrc,
-              serializer: association.serializer.send(:options)[:serializer]
-            )
+        embedded[association.name] =
+          if association.serializer.nil? || association.serializer.object.nil?
+            # active_model_serializers <= 0.10.4 
+            object = serializer.object
+            resource = object.public_send(association.name)
+            serialized = [resource].flatten.map do |resrc|
+              serialize_embedded_resource(resrc, serializer: association.serializer&.class)
+            end
+            serialized.size == 1 ? serialized.first : serialized
+          elsif association.serializer.respond_to? :each
+            association.serializer.map do |_serializer|
+              serialize_resource(_serializer, instance_options, {skip_embedded: true})
+            end
+          else
+            serialize_resource(association.serializer, instance_options, {skip_embedded: true})
           end
-        else
-          embedded[association.name] = serialize_embedded_resource(
-            resource, 
-            serializer: association.serializer&.class
-          )
-        end
       end
     end
 
