@@ -25,9 +25,9 @@ Configure the adapter (e.g. in an initializer such as `config/initializers/activ
 ActiveModelSerializers.config.adapter = AmsHal::Adapter
 ```
 
-## Using the adapter
+## Using the ams_hal adapter
 
-Your serializers should look pretty much that same as any normal ActiveModelSerializer. For example:
+Your serializers will look pretty much that same as any normal ActiveModelSerializer. For example:
 ``` ruby
 class PostSerializer < ActiveModel::Serializer
   attributes :title, :message
@@ -39,7 +39,7 @@ class PostSerializer < ActiveModel::Serializer
   has_many :comments
 end
 ```
-Which would return:
+Which would be serialized into somthing like:
 ``` ruby
 {
     "_embedded": {
@@ -63,11 +63,13 @@ Which would return:
 ```
 The associations `belongs_to` and `has_one` may also be used. These nested resources will get serialized using
 a serializer found by the normal serializer lookup. If you would like to specify a certain serializer then
-write `has_many :comments, serializer: MySerializer`.
-Some things, such as type and meta, are not support in HAL.  
+write
+``` ruby
+has_many :comments, serializer: MySerializer`
+```
+Note: some things, e.g. type and meta, are not support in HAL. Unsupported attributes will be ignored by the ams_hal adapter.   
 
-This makes it possible to let the client request application/hal+json or application/vnd.api+json and 
-use the same serializers. E.g. adding this to the ApplicationController:
+One cool thing about having the serializers written as any other AMS serializer is that you can choose between HAL, JSON_API, etc on per request basis. This means that you can be really reastful and let the clients choose how the response should be represented. If you add something like this in your ApplicationController:
 ``` ruby
 class ApplicationController < ActionController::API
 
@@ -88,10 +90,10 @@ class ApplicationController < ActionController::API
   end
 end
 ```
-Please note: The Accept header can be quiet complex and this maybe not be the best way to dynamically select the media type.
+Then a client that sends requests with the `Accept` header set to `application/hal+json` would be served HAL resources, while another client that sets the `Accept` header to `application/vnd.api+json` would be served JSON API.
 
 ## HAL only
-If you want to go all in with HAL, then include AmsHal::Curies and AmsHal::Embedded. Then write your serializer like:
+If you don't plan on serving any other media types and want to go all in with HAL, then include AmsHal::Curies and AmsHal::Embedded in your serializeres. You will then get a nice DSL so that you can write your serializer like this:
 ``` ruby
 class PostHALSerializer < ActiveModel::Serializer
     include AmsHal::Embedded
@@ -112,7 +114,7 @@ class PostHALSerializer < ActiveModel::Serializer
     end
   end
 ```
-Which would return:
+Which would be serialized into somthing like:
 
 ``` ruby
 {
@@ -143,6 +145,9 @@ Which would return:
 }
 ```
 Like associations, the nested resources will get serialized using a serializer found by the normal serializer lookup.
-(A resource of class `Comment` will use the serializer `CommentSerializer`). If you would like to specify a certain
-serializer then write `embed :comments, serializer: MySerializer`.  
+(I.e. a resource of class `Comment` will use the serializer `CommentSerializer`). If you would like to specify a certain
+serializer then write
+``` ruby
+embed :comments, serializer: MySerializer
+```
 
