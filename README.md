@@ -2,6 +2,7 @@
 
 ActiveModelSerializers is really neat when it comes to serializing resources. However it lacks support for [HAL](http://stateless.co/hal_specification.html).
 This Gem makes it possible to represent resources as HAL with ActiveModelSerializers serializers.
+This Gem is currently not being maintained. Unless you need to be able to support serializing HAL as well as other media formats such as JSON API, I suggest using my [HALDecorator gem](https://github.com/sammyhenningsson/hal_decorator) instead.
 
 
 ## Installation
